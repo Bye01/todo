@@ -1,0 +1,16 @@
+services:
+  todo-app:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      DATABASE_PATH: /app/server/data/todos.sqlite
+      JWT_SECRET: change-this-in-production
+      CLIENT_ORIGIN: "*"
+      NODE_ENV: production
+    volumes:
+      - todo-data:/app/server/data
+
+volumes:
+  todo-data:
