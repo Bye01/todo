@@ -44,6 +44,8 @@ Copy environment settings:
 cp .env.example .env
 ```
 
+Set `JWT_SECRET` to a long random value before starting the app.
+
 Start the app:
 
 ```bash
@@ -98,6 +100,8 @@ docker compose up --build
 ```
 
 Open `http://localhost:4000`.
+
+Docker Compose requires `JWT_SECRET` to be set in your shell or `.env` file.
 
 ## Verification
 

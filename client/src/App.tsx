@@ -1,20 +1,25 @@
 import {
+  AlertTriangle,
   CalendarDays,
   Check,
+  CheckCircle2,
   Circle,
   Edit3,
+  Inbox,
+  Loader2,
   LogOut,
   Plus,
   Search,
   ShieldCheck,
   Trash2,
 } from 'lucide-react'
+import clsx from 'clsx'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import clsx from 'clsx'
 
 type Priority = 'Low' | 'Medium' | 'High'
 type Filter = 'all' | 'active' | 'completed'
+type Toast = { type: 'success' | 'error'; message: string } | null
 
 type User = {
   id: number
@@ -59,12 +64,17 @@ function App() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [notice, setNotice] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isAuthenticating, setIsAuthenticating] = useState(false)
+  const [busyTodoId, setBusyTodoId] = useState<number | null>(null)
+  const [toast, setToast] = useState<Toast>(null)
 
   const stats = useMemo(() => {
     const completed = todos.filter((todo) => todo.completed).length
+    const today = todos.filter((todo) => todo.dueDate === todayIso()).length
+
     return {
-      total: todos.length,
+      today,
       active: todos.length - completed,
       completed,
     }
@@ -83,6 +93,12 @@ function App() {
     if (!session) return
     void loadTodos()
   }, [session, filter])
+
+  useEffect(() => {
+    if (!toast) return
+    const timeout = window.setTimeout(() => setToast(null), 3200)
+    return () => window.clearTimeout(timeout)
+  }, [toast])
 
   async function api<T>(path: string, options: RequestInit = {}) {
     const response = await fetch(`/api${path}`, {
@@ -103,9 +119,14 @@ function App() {
     return response.json() as Promise<T>
   }
 
+  function showToast(type: 'success' | 'error', message: string) {
+    setToast({ type, message })
+  }
+
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setAuthError('')
+    setIsAuthenticating(true)
 
     try {
       const data = await api<Session>(`/auth/${mode}`, {
@@ -115,15 +136,17 @@ function App() {
       setSession(data)
       setUsername('')
       setPassword('')
+      showToast('success', mode === 'login' ? 'Signed in successfully.' : 'Account created.')
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : 'Unable to sign in')
+    } finally {
+      setIsAuthenticating(false)
     }
   }
 
   async function loadTodos() {
     if (!session) return
     setIsLoading(true)
-    setNotice('')
 
     try {
       const params = new URLSearchParams({ filter })
@@ -131,7 +154,7 @@ function App() {
       const data = await api<{ todos: Todo[] }>(`/todos?${params}`)
       setTodos(data.todos)
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Unable to load todos')
+      showToast('error', error instanceof Error ? error.message : 'Unable to load todos.')
     } finally {
       setIsLoading(false)
     }
@@ -140,6 +163,7 @@ function App() {
   async function addTodo(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!title.trim()) return
+    setIsSubmitting(true)
 
     try {
       await api('/todos', {
@@ -150,26 +174,41 @@ function App() {
       setDueDate('')
       setPriority('Medium')
       await loadTodos()
+      showToast('success', 'Todo added.')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Unable to add todo')
+      showToast('error', error instanceof Error ? error.message : 'Unable to add todo.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   async function patchTodo(id: number, body: Partial<Pick<Todo, 'title' | 'completed' | 'dueDate' | 'priority'>>) {
+    setBusyTodoId(id)
+
     try {
       await api(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
       await loadTodos()
+      showToast('success', 'Todo updated.')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Unable to update todo')
+      showToast('error', error instanceof Error ? error.message : 'Unable to update todo.')
+    } finally {
+      setBusyTodoId(null)
     }
   }
 
-  async function deleteTodo(id: number) {
+  async function deleteTodo(todo: Todo) {
+    const confirmed = window.confirm(`Delete "${todo.title}"? This cannot be undone.`)
+    if (!confirmed) return
+    setBusyTodoId(todo.id)
+
     try {
-      await api(`/todos/${id}`, { method: 'DELETE' })
+      await api(`/todos/${todo.id}`, { method: 'DELETE' })
       await loadTodos()
+      showToast('success', 'Todo deleted.')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Unable to delete todo')
+      showToast('error', error instanceof Error ? error.message : 'Unable to delete todo.')
+    } finally {
+      setBusyTodoId(null)
     }
   }
 
@@ -188,62 +227,67 @@ function App() {
 
   if (!session) {
     return (
-      <main className="min-h-screen bg-[#f4f7fb] px-4 py-8 text-slate-900 sm:px-6">
-        <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.08fr_0.92fr]">
+      <main className="min-h-screen bg-[#f7f6f2] px-4 py-8 text-stone-950 sm:px-6">
+        <ToastMessage toast={toast} />
+        <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white bg-white/80 px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm">
-              <ShieldCheck size={18} className="text-teal-600" />
-              Private task lists for every local user
+            <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white/80 px-4 py-2 text-sm font-medium text-stone-600 shadow-sm shadow-stone-200/50">
+              <ShieldCheck size={17} className="text-teal-700" />
+              Private workspaces for local users
             </div>
             <div className="space-y-5">
-              <h1 className="max-w-3xl text-5xl font-black tracking-normal text-slate-950 sm:text-6xl">
-                Clear your day with a calmer todo board.
+              <h1 className="max-w-3xl text-5xl font-semibold tracking-normal text-stone-950 sm:text-6xl">
+                A quieter place to finish your day.
               </h1>
-              <p className="max-w-2xl text-lg leading-8 text-slate-600">
-                Create an account, prioritize what matters, search across tasks, and keep completed work neatly tucked away.
+              <p className="max-w-2xl text-lg leading-8 text-stone-600">
+                Plan the next task, surface what is overdue, and keep completed work neatly out of the way.
               </p>
             </div>
             <div className="grid max-w-2xl gap-3 sm:grid-cols-3">
-              {['Due dates', 'Priority levels', 'Fast filters'].map((item) => (
-                <div key={item} className="rounded-lg border border-white bg-white/80 p-4 shadow-sm">
-                  <p className="text-sm font-bold text-slate-900">{item}</p>
+              {['Due dates', 'Priorities', 'Fast search'].map((item) => (
+                <div key={item} className="rounded-lg border border-stone-200 bg-white/85 p-4 shadow-sm shadow-stone-200/60">
+                  <p className="text-sm font-semibold text-stone-900">{item}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <form onSubmit={handleAuth} className="rounded-lg border border-white bg-white p-6 shadow-xl shadow-slate-200/70">
+          <form onSubmit={handleAuth} className="rounded-lg border border-stone-200 bg-white p-6 shadow-2xl shadow-stone-300/25">
             <div className="mb-6">
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-teal-600">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
                 {mode === 'login' ? 'Welcome back' : 'Create account'}
               </p>
-              <h2 className="mt-2 text-2xl font-black text-slate-950">
+              <h2 className="mt-2 text-2xl font-semibold text-stone-950">
                 {mode === 'login' ? 'Sign in to your list' : 'Start your private list'}
               </h2>
             </div>
             <label className="mb-4 block">
-              <span className="mb-2 block text-sm font-semibold text-slate-700">Username</span>
+              <span className="mb-2 block text-sm font-medium text-stone-700">Username</span>
               <input
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-4 py-3 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
+                className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
                 placeholder="alex"
                 autoComplete="username"
               />
             </label>
             <label className="mb-4 block">
-              <span className="mb-2 block text-sm font-semibold text-slate-700">Password</span>
+              <span className="mb-2 block text-sm font-medium text-stone-700">Password</span>
               <input
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-4 py-3 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
+                className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
                 placeholder="At least 6 characters"
                 type="password"
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               />
             </label>
-            {authError && <p className="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{authError}</p>}
-            <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-3 font-bold text-white transition hover:bg-slate-800">
+            {authError && <InlineMessage type="error" message={authError} />}
+            <button
+              disabled={isAuthenticating}
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-stone-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isAuthenticating && <Loader2 size={17} className="animate-spin" />}
               {mode === 'login' ? 'Sign in' : 'Create account'}
             </button>
             <button
@@ -252,7 +296,7 @@ function App() {
                 setMode(mode === 'login' ? 'register' : 'login')
                 setAuthError('')
               }}
-              className="mt-4 w-full rounded-lg px-4 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+              className="mt-3 w-full rounded-lg px-4 py-3 text-sm font-semibold text-stone-600 transition hover:bg-stone-50"
             >
               {mode === 'login' ? 'Need an account? Register' : 'Already have an account? Sign in'}
             </button>
@@ -263,82 +307,93 @@ function App() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f4f7fb] px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#f7f6f2] px-3 py-4 text-stone-950 sm:px-6 sm:py-8 lg:px-8">
+      <ToastMessage toast={toast} />
       <section className="mx-auto max-w-7xl">
-        <header className="mb-6 flex flex-col gap-4 rounded-lg border border-white bg-white/90 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-teal-600">Today</p>
-            <h1 className="mt-1 text-3xl font-black text-slate-950">Todo Command Center</h1>
-            <p className="mt-1 text-sm text-slate-500">Signed in as {session.user.username}</p>
+        <header className="mb-6 flex flex-col gap-5 border-b border-stone-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Personal workspace</p>
+            <h1 className="text-4xl font-semibold tracking-normal text-stone-950 sm:text-5xl">Today</h1>
+            <p className="text-sm text-stone-500">Signed in as {session.user.username}</p>
           </div>
           <button
             onClick={() => setSession(null)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 shadow-sm shadow-stone-200/60 transition hover:border-stone-300 hover:bg-stone-50 sm:w-auto"
           >
-            <LogOut size={18} />
+            <LogOut size={17} />
             Logout
           </button>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-          <aside className="space-y-6">
-            <form onSubmit={addTodo} className="rounded-lg border border-white bg-white p-5 shadow-sm">
-              <h2 className="mb-4 text-xl font-black text-slate-950">Add todo</h2>
-              <label className="mb-4 block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Task</span>
-                <input
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-4 py-3 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
-                  placeholder="Write project brief"
-                />
-              </label>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+          <aside className="space-y-4 lg:sticky lg:top-8 lg:self-start">
+            <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-xl shadow-stone-300/20 sm:p-5">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-stone-950">New task</h2>
+                <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">Quick add</span>
+              </div>
+              <form onSubmit={addTodo} className="space-y-4">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-slate-700">Due date</span>
+                  <span className="mb-2 block text-sm font-medium text-stone-700">Task</span>
                   <input
-                    value={dueDate}
-                    onChange={(event) => setDueDate(event.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-4 py-3 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
-                    type="date"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
+                    placeholder="Write project brief"
                   />
                 </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-slate-700">Priority</span>
-                  <select
-                    value={priority}
-                    onChange={(event) => setPriority(event.target.value as Priority)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
-                  >
-                    <option>Low</option>
-                    <option>Medium</option>
-                    <option>High</option>
-                  </select>
-                </label>
-              </div>
-              <button className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-3 font-bold text-white transition hover:bg-teal-700">
-                <Plus size={18} />
-                Add task
-              </button>
-            </form>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-stone-700">Due date</span>
+                    <input
+                      value={dueDate}
+                      onChange={(event) => setDueDate(event.target.value)}
+                      className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
+                      type="date"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-stone-700">Priority</span>
+                    <select
+                      value={priority}
+                      onChange={(event) => setPriority(event.target.value as Priority)}
+                      className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
+                    >
+                      <option>Low</option>
+                      <option>Medium</option>
+                      <option>High</option>
+                    </select>
+                  </label>
+                </div>
+                <button
+                  disabled={isSubmitting}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-stone-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSubmitting ? <Loader2 size={17} className="animate-spin" /> : <Plus size={17} />}
+                  Add task
+                </button>
+              </form>
+            </section>
 
-            <div className="grid grid-cols-3 gap-3">
-              <Stat label="All" value={stats.total} />
-              <Stat label="Active" value={stats.active} />
-              <Stat label="Done" value={stats.completed} />
-            </div>
+            <section className="grid grid-cols-3 gap-3">
+              <Stat label="Today" value={stats.today} tone="teal" />
+              <Stat label="Done" value={stats.completed} tone="stone" />
+              <Stat label="Open" value={stats.active} tone="rose" />
+            </section>
           </aside>
 
-          <section className="rounded-lg border border-white bg-white p-5 shadow-sm">
+          <section className="min-w-0 rounded-lg border border-stone-200 bg-white p-3 shadow-xl shadow-stone-300/20 sm:p-5">
             <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex rounded-lg bg-slate-100 p-1">
+              <div className="grid grid-cols-3 rounded-lg border border-stone-200 bg-stone-50 p-1">
                 {(['all', 'active', 'completed'] as Filter[]).map((item) => (
                   <button
                     key={item}
                     onClick={() => setFilter(item)}
                     className={clsx(
-                      'rounded-md px-4 py-2 text-sm font-bold capitalize transition',
-                      filter === item ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-900',
+                      'rounded-md px-3 py-2 text-sm font-semibold capitalize transition sm:px-4',
+                      filter === item
+                        ? 'bg-white text-stone-950 shadow-sm shadow-stone-200/80'
+                        : 'text-stone-500 hover:text-stone-900',
                     )}
                   >
                     {item}
@@ -350,122 +405,142 @@ function App() {
                   event.preventDefault()
                   void loadTodos()
                 }}
-                className="flex gap-2"
+                className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
               >
-                <label className="relative flex-1">
-                  <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <label className="relative min-w-0">
+                  <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                   <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    className="w-full rounded-lg border border-slate-200 py-3 pl-10 pr-3 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
+                    className="w-full rounded-lg border border-stone-200 bg-stone-50/60 py-3 pl-10 pr-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
                     placeholder="Search tasks"
                   />
                 </label>
-                <button className="rounded-lg bg-slate-950 px-4 py-3 font-bold text-white transition hover:bg-slate-800">
+                <button className="rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-800 shadow-sm shadow-stone-200/60 transition hover:bg-stone-50">
                   Search
                 </button>
               </form>
             </div>
 
-            {notice && <p className="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{notice}</p>}
-            {isLoading && <p className="rounded-lg bg-slate-50 px-4 py-8 text-center font-semibold text-slate-500">Loading tasks...</p>}
+            {isLoading && <LoadingState />}
 
-            {!isLoading && todos.length === 0 && (
-              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center">
-                <p className="text-lg font-black text-slate-900">No todos found</p>
-                <p className="mt-1 text-slate-500">Add a task or adjust your filters.</p>
-              </div>
-            )}
+            {!isLoading && todos.length === 0 && <EmptyState filter={filter} hasSearch={Boolean(search.trim())} />}
 
-            <div className="space-y-3">
-              {todos.map((todo) => (
-                <article
-                  key={todo.id}
-                  className={clsx(
-                    'rounded-lg border p-4 transition',
-                    todo.completed ? 'border-slate-100 bg-slate-50' : 'border-slate-200 bg-white shadow-sm',
-                  )}
-                >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="flex min-w-0 flex-1 gap-3">
-                      <button
-                        onClick={() => patchTodo(todo.id, { completed: !todo.completed })}
-                        className={clsx(
-                          'mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition',
-                          todo.completed
-                            ? 'border-teal-600 bg-teal-600 text-white'
-                            : 'border-slate-300 text-slate-400 hover:border-teal-500 hover:text-teal-600',
-                        )}
-                        aria-label={todo.completed ? 'Mark active' : 'Mark completed'}
-                      >
-                        {todo.completed ? <Check size={17} /> : <Circle size={17} />}
-                      </button>
+            {!isLoading && todos.length > 0 && (
+              <div className="space-y-3">
+                {todos.map((todo) => {
+                  const overdue = isOverdue(todo)
+                  const busy = busyTodoId === todo.id
 
-                      <div className="min-w-0 flex-1">
-                        {editingId === todo.id ? (
-                          <form onSubmit={(event) => submitEdit(event, todo)} className="flex gap-2">
-                            <input
-                              value={editingTitle}
-                              onChange={(event) => setEditingTitle(event.target.value)}
-                              className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-100"
-                              autoFocus
-                            />
-                            <button className="rounded-lg bg-slate-950 px-3 py-2 text-sm font-bold text-white">Save</button>
-                          </form>
-                        ) : (
-                          <h3 className={clsx('break-words text-lg font-black', todo.completed && 'text-slate-400 line-through')}>
-                            {todo.title}
-                          </h3>
-                        )}
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <span className={clsx('rounded-full border px-3 py-1 text-xs font-black', priorityStyles[todo.priority])}>
-                            {todo.priority}
-                          </span>
-                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-500">
-                            <CalendarDays size={14} />
-                            {todo.dueDate || 'No due date'}
-                          </span>
+                  return (
+                    <article
+                      key={todo.id}
+                      className={clsx(
+                        'rounded-lg border bg-white p-4 shadow-sm transition sm:p-5',
+                        todo.completed && 'border-stone-100 bg-stone-50/70',
+                        !todo.completed && !overdue && 'border-stone-200 hover:border-stone-300 hover:shadow-md hover:shadow-stone-200/60',
+                        overdue && 'border-rose-200 bg-rose-50/55 shadow-rose-100/70',
+                      )}
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex min-w-0 flex-1 gap-3">
+                          <button
+                            disabled={busy}
+                            onClick={() => patchTodo(todo.id, { completed: !todo.completed })}
+                            className={clsx(
+                              'mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-50',
+                              todo.completed
+                                ? 'border-teal-700 bg-teal-700 text-white'
+                                : 'border-stone-300 bg-white text-stone-400 hover:border-teal-700 hover:text-teal-700',
+                            )}
+                            aria-label={todo.completed ? 'Mark active' : 'Mark completed'}
+                          >
+                            {busy ? <Loader2 size={16} className="animate-spin" /> : todo.completed ? <Check size={16} /> : <Circle size={16} />}
+                          </button>
+
+                          <div className="min-w-0 flex-1">
+                            {editingId === todo.id ? (
+                              <form onSubmit={(event) => submitEdit(event, todo)} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                                <input
+                                  value={editingTitle}
+                                  onChange={(event) => setEditingTitle(event.target.value)}
+                                  className="min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100"
+                                  autoFocus
+                                />
+                                <button className="rounded-lg bg-stone-950 px-3 py-2 text-sm font-semibold text-white">Save</button>
+                              </form>
+                            ) : (
+                              <h3 className={clsx('break-words text-base font-semibold text-stone-950 sm:text-lg', todo.completed && 'text-stone-400 line-through')}>
+                                {todo.title}
+                              </h3>
+                            )}
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {overdue && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700">
+                                  <AlertTriangle size={14} />
+                                  Overdue
+                                </span>
+                              )}
+                              <span className={clsx('rounded-full border px-3 py-1 text-xs font-semibold', priorityStyles[todo.priority])}>
+                                {todo.priority}
+                              </span>
+                              <span
+                                className={clsx(
+                                  'inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-xs font-semibold',
+                                  overdue ? 'border-rose-200 text-rose-700' : 'border-stone-200 text-stone-500',
+                                )}
+                              >
+                                <CalendarDays size={14} />
+                                {todo.dueDate ? formatDate(todo.dueDate) : 'No due date'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
+                          <select
+                            disabled={busy}
+                            value={todo.priority}
+                            onChange={(event) => patchTodo(todo.id, { priority: event.target.value as Priority })}
+                            className="min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none transition focus:border-stone-400 disabled:opacity-50"
+                            aria-label="Change priority"
+                          >
+                            <option>Low</option>
+                            <option>Medium</option>
+                            <option>High</option>
+                          </select>
+                          <input
+                            disabled={busy}
+                            value={todo.dueDate ?? ''}
+                            onChange={(event) => patchTodo(todo.id, { dueDate: event.target.value || null })}
+                            className="min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none transition focus:border-stone-400 disabled:opacity-50"
+                            type="date"
+                            aria-label="Change due date"
+                          />
+                          <button
+                            disabled={busy}
+                            onClick={() => startEditing(todo)}
+                            className="rounded-lg border border-stone-200 bg-white p-2 text-stone-500 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 disabled:opacity-50"
+                            aria-label="Edit todo"
+                          >
+                            <Edit3 size={18} />
+                          </button>
+                          <button
+                            disabled={busy}
+                            onClick={() => deleteTodo(todo)}
+                            className="rounded-lg border border-stone-200 bg-white p-2 text-stone-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
+                            aria-label="Delete todo"
+                          >
+                            <Trash2 size={18} />
+                          </button>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex shrink-0 flex-wrap gap-2">
-                      <select
-                        value={todo.priority}
-                        onChange={(event) => patchTodo(todo.id, { priority: event.target.value as Priority })}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold outline-none focus:border-teal-500"
-                        aria-label="Change priority"
-                      >
-                        <option>Low</option>
-                        <option>Medium</option>
-                        <option>High</option>
-                      </select>
-                      <input
-                        value={todo.dueDate ?? ''}
-                        onChange={(event) => patchTodo(todo.id, { dueDate: event.target.value || null })}
-                        className="w-36 rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:border-teal-500"
-                        type="date"
-                        aria-label="Change due date"
-                      />
-                      <button
-                        onClick={() => startEditing(todo)}
-                        className="rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                        aria-label="Edit todo"
-                      >
-                        <Edit3 size={18} />
-                      </button>
-                      <button
-                        onClick={() => deleteTodo(todo.id)}
-                        className="rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-                        aria-label="Delete todo"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
           </section>
         </div>
       </section>
@@ -473,13 +548,102 @@ function App() {
   )
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value, tone }: { label: string; value: number; tone: 'teal' | 'stone' | 'rose' }) {
+  const toneClass = {
+    teal: 'text-teal-700',
+    stone: 'text-stone-900',
+    rose: 'text-rose-700',
+  }[tone]
+
   return (
-    <div className="rounded-lg border border-white bg-white p-4 text-center shadow-sm">
-      <p className="text-2xl font-black text-slate-950">{value}</p>
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{label}</p>
+    <div className="rounded-lg border border-stone-200 bg-white p-4 text-center shadow-sm shadow-stone-200/60">
+      <p className={clsx('text-2xl font-semibold', toneClass)}>{value}</p>
+      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-400">{label}</p>
     </div>
   )
+}
+
+function ToastMessage({ toast }: { toast: Toast }) {
+  if (!toast) return null
+
+  return (
+    <div className="fixed left-3 right-3 top-3 z-50 mx-auto max-w-md sm:left-auto sm:right-6 sm:top-6">
+      <div
+        className={clsx(
+          'flex items-start gap-3 rounded-lg border bg-white px-4 py-3 text-sm font-medium shadow-xl shadow-stone-300/30',
+          toast.type === 'success' ? 'border-teal-200 text-teal-800' : 'border-rose-200 text-rose-800',
+        )}
+      >
+        {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+        <span>{toast.message}</span>
+      </div>
+    </div>
+  )
+}
+
+function InlineMessage({ type, message }: { type: 'error'; message: string }) {
+  return (
+    <p
+      className={clsx(
+        'mb-4 rounded-lg border px-4 py-3 text-sm font-medium',
+        type === 'error' && 'border-rose-200 bg-rose-50 text-rose-700',
+      )}
+    >
+      {message}
+    </p>
+  )
+}
+
+function LoadingState() {
+  return (
+    <div className="space-y-3">
+      {[0, 1, 2].map((item) => (
+        <div key={item} className="rounded-lg border border-stone-200 bg-stone-50 p-5">
+          <div className="h-4 w-2/3 animate-pulse rounded-full bg-stone-200" />
+          <div className="mt-4 flex gap-2">
+            <div className="h-6 w-20 animate-pulse rounded-full bg-stone-200" />
+            <div className="h-6 w-28 animate-pulse rounded-full bg-stone-200" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function EmptyState({ filter, hasSearch }: { filter: Filter; hasSearch: boolean }) {
+  const title = hasSearch ? 'No matching tasks' : filter === 'completed' ? 'No completed tasks yet' : 'No tasks here'
+  const body = hasSearch
+    ? 'Try a different search term or clear the search field.'
+    : filter === 'active'
+      ? 'Everything active is already handled. Nice and quiet.'
+      : 'Add your first task from the panel on the left.'
+
+  return (
+    <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50/70 px-5 py-14 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-500">
+        <Inbox size={22} />
+      </div>
+      <p className="mt-4 text-lg font-semibold text-stone-950">{title}</p>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-stone-500">{body}</p>
+    </div>
+  )
+}
+
+function todayIso() {
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function isOverdue(todo: Todo) {
+  return Boolean(todo.dueDate && !todo.completed && todo.dueDate < todayIso())
+}
+
+function formatDate(value: string) {
+  const [year, month, day] = value.split('-')
+  return `${month}/${day}/${year}`
 }
 
 export default App

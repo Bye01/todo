@@ -72,6 +72,14 @@ async function main() {
     const search = await request('/todos?search=polished', { token: first.token })
     assert(search.todos.length === 1, 'search should match edited todo')
 
+    await request('/todos', { expectStatus: 401 })
+    await request('/todos', {
+      method: 'POST',
+      token: first.token,
+      body: { title: 'Invalid date should fail', priority: 'High', dueDate: '2026-99-99' },
+      expectStatus: 400,
+    })
+
     await request(`/todos/${high.todo.id}`, { method: 'DELETE', token: first.token, expectStatus: 204 })
     const afterDelete = await request('/todos', { token: first.token })
     assert(afterDelete.todos.length === 1, 'delete should remove todo')

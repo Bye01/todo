@@ -6,7 +6,7 @@ services:
     environment:
       PORT: 4000
       DATABASE_PATH: /app/server/data/todos.sqlite
-      JWT_SECRET: change-this-in-production
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       CLIENT_ORIGIN: "*"
       NODE_ENV: production
     volumes:

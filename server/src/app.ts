@@ -1,5 +1,6 @@
 import cors from 'cors'
 import express from 'express'
+import rateLimit from 'express-rate-limit'
 import path from 'node:path'
 import { config } from './config'
 import { requireAuth } from './middleware/auth'
@@ -9,6 +10,18 @@ import { errorHandler, notFoundHandler } from './utils/errors'
 
 export function createApp() {
   const app = express()
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Too many sign-in attempts. Please try again later.',
+      },
+    },
+  })
 
   app.use(
     cors({
@@ -22,7 +35,7 @@ export function createApp() {
     res.json({ ok: true })
   })
 
-  app.use('/api/auth', authRouter)
+  app.use('/api/auth', authLimiter, authRouter)
   app.use('/api/todos', requireAuth, todosRouter)
 
   if (config.isProduction) {
