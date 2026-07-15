@@ -14,7 +14,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import clsx from 'clsx'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 
 type Priority = 'Low' | 'Medium' | 'High'
@@ -85,6 +85,7 @@ const savedSession = localStorage.getItem('todo-session')
 const apiBaseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? ''
 
 function App() {
+  const dueDateInputRef = useRef<HTMLInputElement>(null)
   const [session, setSession] = useState<Session | null>(() => (savedSession ? JSON.parse(savedSession) : null))
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [username, setUsername] = useState('')
@@ -160,6 +161,24 @@ function App() {
 
   function showToast(type: 'success' | 'error', message: string) {
     setToast({ type, message })
+  }
+
+  function openDueDatePicker() {
+    const input = dueDateInputRef.current
+    if (!input) return
+
+    input.focus()
+    if (typeof input.showPicker === 'function') {
+      try {
+        input.showPicker()
+        return
+      } catch {
+        input.click()
+        return
+      }
+    }
+
+    input.click()
   }
 
   function startSlowTimer(callback: () => void) {
@@ -498,11 +517,19 @@ function App() {
                           ×
                         </button>
                       )}
+                      <button
+                        type="button"
+                        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                        onClick={openDueDatePicker}
+                        aria-label="选择截止日期"
+                      />
                       <input
+                        ref={dueDateInputRef}
                         value={dueDate}
                         onChange={(event) => setDueDate(event.target.value)}
-                        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                        className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
                         type="date"
+                        tabIndex={-1}
                         aria-label="选择截止日期"
                       />
                     </div>
