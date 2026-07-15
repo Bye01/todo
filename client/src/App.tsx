@@ -34,6 +34,7 @@ type Todo = {
   priority: Priority
   createdAt: string
   updatedAt: string
+  isPending?: boolean
 }
 
 type Session = {
@@ -97,10 +98,14 @@ function App() {
   const [priority, setPriority] = useState<Priority>('Medium')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [updatingTodoId, setUpdatingTodoId] = useState<number | null>(null)
+  const [deletingTodoId, setDeletingTodoId] = useState<number | null>(null)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
-  const [busyTodoId, setBusyTodoId] = useState<number | null>(null)
+  const [initialLoadingSlow, setInitialLoadingSlow] = useState(false)
+  const [creatingSlow, setCreatingSlow] = useState(false)
+  const [slowTodoId, setSlowTodoId] = useState<number | null>(null)
   const [toast, setToast] = useState<Toast>(null)
 
   const stats = useMemo(() => {
@@ -157,6 +162,22 @@ function App() {
     setToast({ type, message })
   }
 
+  function startSlowTimer(callback: () => void) {
+    return window.setTimeout(callback, 2000)
+  }
+
+  function shouldShowTodo(todo: Todo) {
+    const query = search.trim().toLowerCase()
+    const matchesFilter =
+      filter === 'all' || (filter === 'active' && !todo.completed) || (filter === 'completed' && todo.completed)
+    const matchesSearch = !query || todo.title.toLowerCase().includes(query)
+    return matchesFilter && matchesSearch
+  }
+
+  function replaceTodo(nextTodo: Todo) {
+    setTodos((current) => current.map((todo) => (todo.id === nextTodo.id ? nextTodo : todo)).filter(shouldShowTodo))
+  }
+
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setAuthError('')
@@ -180,7 +201,14 @@ function App() {
 
   async function loadTodos() {
     if (!session) return
-    setIsLoading(true)
+    const showInitialLoading = todos.length === 0
+    let slowTimer: number | undefined
+
+    if (showInitialLoading) {
+      setInitialLoading(true)
+      setInitialLoadingSlow(false)
+      slowTimer = startSlowTimer(() => setInitialLoadingSlow(true))
+    }
 
     try {
       const params = new URLSearchParams({ filter })
@@ -190,59 +218,126 @@ function App() {
     } catch (error) {
       showToast('error', error instanceof Error ? error.message : '待办事项加载失败。')
     } finally {
-      setIsLoading(false)
+      if (slowTimer) window.clearTimeout(slowTimer)
+      setInitialLoading(false)
+      setInitialLoadingSlow(false)
     }
   }
 
   async function addTodo(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!title.trim()) return
-    setIsSubmitting(true)
+    const nextTitle = title.trim()
+    if (!nextTitle || creating) return
+
+    const tempTodo: Todo = {
+      id: -Date.now(),
+      title: nextTitle,
+      completed: false,
+      dueDate: dueDate || null,
+      priority,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isPending: true,
+    }
+    const previousForm = { title, dueDate, priority }
+    const slowTimer = startSlowTimer(() => setCreatingSlow(true))
+
+    setCreating(true)
+    setCreatingSlow(false)
+    if (shouldShowTodo(tempTodo)) {
+      setTodos((current) => [tempTodo, ...current])
+    }
+    setTitle('')
+    setDueDate('')
+    setPriority('Medium')
 
     try {
-      await api('/todos', {
+      const data = await api<{ todo: Todo }>('/todos', {
         method: 'POST',
-        body: JSON.stringify({ title, dueDate: dueDate || null, priority }),
+        body: JSON.stringify({ title: nextTitle, dueDate: tempTodo.dueDate, priority }),
       })
-      setTitle('')
-      setDueDate('')
-      setPriority('Medium')
-      await loadTodos()
+      setTodos((current) => {
+        const withoutTemp = current.filter((todo) => todo.id !== tempTodo.id)
+        return shouldShowTodo(data.todo) ? [data.todo, ...withoutTemp] : withoutTemp
+      })
       showToast('success', '待办事项已创建。')
     } catch (error) {
+      setTodos((current) => current.filter((todo) => todo.id !== tempTodo.id))
+      setTitle(previousForm.title)
+      setDueDate(previousForm.dueDate)
+      setPriority(previousForm.priority)
       showToast('error', error instanceof Error ? error.message : '待办事项创建失败。')
     } finally {
-      setIsSubmitting(false)
+      window.clearTimeout(slowTimer)
+      setCreating(false)
+      setCreatingSlow(false)
     }
   }
 
   async function patchTodo(id: number, body: Partial<Pick<Todo, 'title' | 'completed' | 'dueDate' | 'priority'>>) {
-    setBusyTodoId(id)
+    const previousTodo = todos.find((todo) => todo.id === id)
+    if (!previousTodo || updatingTodoId === id || deletingTodoId === id) return false
+
+    const optimisticTodo = { ...previousTodo, ...body, updatedAt: new Date().toISOString() }
+    const slowTimer = startSlowTimer(() => setSlowTodoId(id))
+
+    setUpdatingTodoId(id)
+    setSlowTodoId(null)
+    replaceTodo(optimisticTodo)
 
     try {
-      await api(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
-      await loadTodos()
+      const data = await api<{ todo?: Todo }>(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+      if (data.todo) {
+        replaceTodo(data.todo)
+      } else {
+        await loadTodos()
+      }
       showToast('success', '待办事项已更新。')
+      return true
     } catch (error) {
+      setTodos((current) => {
+        const exists = current.some((todo) => todo.id === previousTodo.id)
+        return exists ? current.map((todo) => (todo.id === previousTodo.id ? previousTodo : todo)) : [previousTodo, ...current]
+      })
       showToast('error', error instanceof Error ? error.message : '待办事项更新失败。')
+      return false
     } finally {
-      setBusyTodoId(null)
+      window.clearTimeout(slowTimer)
+      setUpdatingTodoId(null)
+      setSlowTodoId(null)
     }
   }
 
   async function deleteTodo(todo: Todo) {
     const confirmed = window.confirm(`确认删除“${todo.title}”？此操作无法撤销。`)
-    if (!confirmed) return
-    setBusyTodoId(todo.id)
+    if (!confirmed || deletingTodoId === todo.id) return
+
+    const previousIndex = todos.findIndex((item) => item.id === todo.id)
+    const slowTimer = startSlowTimer(() => setSlowTodoId(todo.id))
+    const deleteRequest = api(`/todos/${todo.id}`, { method: 'DELETE' })
+
+    setDeletingTodoId(todo.id)
+    setSlowTodoId(null)
+    const removeTimer = window.setTimeout(() => {
+      setTodos((current) => current.filter((item) => item.id !== todo.id))
+    }, 220)
 
     try {
-      await api(`/todos/${todo.id}`, { method: 'DELETE' })
-      await loadTodos()
+      await deleteRequest
       showToast('success', '待办事项已删除。')
     } catch (error) {
+      window.clearTimeout(removeTimer)
+      setTodos((current) => {
+        if (current.some((item) => item.id === todo.id)) return current
+        const restored = [...current]
+        restored.splice(Math.max(previousIndex, 0), 0, todo)
+        return restored
+      })
       showToast('error', error instanceof Error ? error.message : '待办事项删除失败。')
     } finally {
-      setBusyTodoId(null)
+      window.clearTimeout(slowTimer)
+      setDeletingTodoId(null)
+      setSlowTodoId(null)
     }
   }
 
@@ -254,9 +349,11 @@ function App() {
   async function submitEdit(event: FormEvent<HTMLFormElement>, todo: Todo) {
     event.preventDefault()
     if (!editingTitle.trim()) return
-    await patchTodo(todo.id, { title: editingTitle.trim() })
-    setEditingId(null)
-    setEditingTitle('')
+    const updated = await patchTodo(todo.id, { title: editingTitle.trim() })
+    if (updated) {
+      setEditingId(null)
+      setEditingTitle('')
+    }
   }
 
   if (!session) {
@@ -424,12 +521,13 @@ function App() {
                   </label>
                 </div>
                 <button
-                  disabled={isSubmitting}
+                  disabled={creating}
                   className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(37,99,235,0.22)] transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSubmitting ? <Loader2 size={17} className="animate-spin" /> : <Plus size={17} />}
-                  新建任务
+                  {creating ? <Loader2 size={17} className="animate-spin" /> : <Plus size={17} />}
+                  {creating ? '正在添加…' : '新建任务'}
                 </button>
+                {creatingSlow && <p className="text-center text-xs text-slate-500">服务器正在响应…</p>}
               </form>
             </section>
 
@@ -480,24 +578,37 @@ function App() {
               </form>
             </div>
 
-            {isLoading && <LoadingState />}
+            {initialLoading && todos.length === 0 && (
+              <>
+                {initialLoadingSlow && (
+                  <p className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">
+                    免费服务器可能正在唤醒，请稍候。
+                  </p>
+                )}
+                <LoadingState />
+              </>
+            )}
 
-            {!isLoading && todos.length === 0 && <EmptyState filter={filter} hasSearch={Boolean(search.trim())} />}
+            {!initialLoading && todos.length === 0 && <EmptyState filter={filter} hasSearch={Boolean(search.trim())} />}
 
-            {!isLoading && todos.length > 0 && (
+            {todos.length > 0 && (
               <div className="space-y-3">
                 {todos.map((todo) => {
                   const overdue = isOverdue(todo)
-                  const busy = busyTodoId === todo.id
+                  const updating = updatingTodoId === todo.id
+                  const deleting = deletingTodoId === todo.id
+                  const busy = updating || deleting || todo.isPending
 
                   return (
                     <article
                       key={todo.id}
                       className={clsx(
-                        'rounded-xl border bg-white p-4 shadow-[0_6px_20px_rgba(31,35,41,0.05)] transition sm:p-5',
+                        'todo-card rounded-xl border bg-white p-4 shadow-[0_6px_20px_rgba(31,35,41,0.05)] transition sm:p-5',
                         todo.completed && 'border-slate-100 bg-slate-50/70',
                         !todo.completed && !overdue && 'border-slate-100 hover:border-blue-200 hover:shadow-[0_10px_28px_rgba(31,35,41,0.08)]',
                         overdue && 'border-rose-100 bg-rose-50/70 shadow-[0_8px_26px_rgba(225,29,72,0.08)]',
+                        todo.isPending && 'todo-card--new opacity-70',
+                        deleting && 'todo-card--removing pointer-events-none',
                       )}
                     >
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -538,6 +649,17 @@ function App() {
                                 <span className="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-white px-3 py-1 text-xs font-semibold text-rose-700">
                                   <AlertTriangle size={14} />
                                   已逾期
+                                </span>
+                              )}
+                              {todo.isPending && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                                  <Loader2 size={13} className="animate-spin" />
+                                  保存中
+                                </span>
+                              )}
+                              {slowTodoId === todo.id && (
+                                <span className="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                                  服务器正在响应…
                                 </span>
                               )}
                               <span className={clsx('rounded-full border px-3 py-1 text-xs font-semibold', priorityStyles[todo.priority])}>
