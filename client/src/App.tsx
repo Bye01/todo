@@ -379,12 +379,21 @@ function App() {
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                   <label className="block">
                     <span className="mb-2 block text-sm font-medium text-slate-700">截止日期</span>
-                    <input
-                      value={dueDate}
-                      onChange={(event) => setDueDate(event.target.value)}
-                      className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"
-                      type="date"
-                    />
+                    <div className="group relative flex h-11 w-full items-center rounded-lg border border-slate-200 bg-slate-50/70 px-4 text-sm transition hover:bg-blue-50/70 focus-within:border-blue-400 focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(59,130,246,0.12)]">
+                      <span className="mr-2 text-base leading-none" aria-hidden="true">
+                        📅
+                      </span>
+                      <span className={clsx('min-w-0 flex-1 truncate', dueDate ? 'text-slate-800' : 'text-slate-400')}>
+                        {dueDate || '请选择截止日期'}
+                      </span>
+                      <input
+                        value={dueDate}
+                        onChange={(event) => setDueDate(event.target.value)}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                        type="date"
+                        aria-label="选择截止日期"
+                      />
+                    </div>
                   </label>
                   <label className="block">
                     <span className="mb-2 block text-sm font-medium text-slate-700">优先级</span>
