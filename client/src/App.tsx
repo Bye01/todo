@@ -42,9 +42,9 @@ type Session = {
 }
 
 const priorityStyles: Record<Priority, string> = {
-  Low: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  Medium: 'border-amber-200 bg-amber-50 text-amber-700',
-  High: 'border-rose-200 bg-rose-50 text-rose-700',
+  Low: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+  Medium: 'border-blue-100 bg-blue-50 text-blue-700',
+  High: 'border-rose-100 bg-rose-50 text-rose-700',
 }
 
 const priorityLabels: Record<Priority, string> = {
@@ -261,56 +261,56 @@ function App() {
 
   if (!session) {
     return (
-      <main className="min-h-screen bg-[#f7f6f2] px-4 py-8 text-stone-950 sm:px-6">
+      <main className="min-h-screen bg-[#f5f7fb] px-4 py-8 text-[#1f2329] sm:px-6">
         <ToastMessage toast={toast} />
         <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white/80 px-4 py-2 text-sm font-medium text-stone-600 shadow-sm shadow-stone-200/50">
-              <ShieldCheck size={17} className="text-teal-700" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/90 px-4 py-2 text-sm font-medium text-slate-600 shadow-[0_6px_20px_rgba(31,35,41,0.05)]">
+              <ShieldCheck size={17} className="text-blue-600" />
               本地用户专属空间
             </div>
             <div className="space-y-5">
-              <h1 className="max-w-3xl text-5xl font-semibold tracking-normal text-stone-950 sm:text-6xl">
+              <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-normal text-[#1f2329] sm:text-6xl">
                 更从容地安排今天的事项
               </h1>
-              <p className="max-w-2xl text-lg leading-8 text-stone-600">
+              <p className="max-w-2xl text-lg leading-8 text-slate-600">
                 规划下一步，及时看到逾期任务，也让已完成的事项保持清爽有序。
               </p>
             </div>
             <div className="grid max-w-2xl gap-3 sm:grid-cols-3">
               {['截止日期', '优先级', '快速搜索'].map((item) => (
-                <div key={item} className="rounded-lg border border-stone-200 bg-white/85 p-4 shadow-sm shadow-stone-200/60">
-                  <p className="text-sm font-semibold text-stone-900">{item}</p>
+                <div key={item} className="rounded-xl border border-slate-100 bg-white/90 p-4 shadow-[0_8px_28px_rgba(31,35,41,0.06)]">
+                  <p className="text-sm font-semibold text-slate-800">{item}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <form onSubmit={handleAuth} className="rounded-lg border border-stone-200 bg-white p-6 shadow-2xl shadow-stone-300/25">
+          <form onSubmit={handleAuth} className="rounded-xl border border-slate-100 bg-white p-6 shadow-[0_18px_50px_rgba(31,35,41,0.10)]">
             <div className="mb-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+              <p className="text-xs font-semibold tracking-[0.08em] text-blue-600">
                 {mode === 'login' ? '欢迎回来' : '创建账号'}
               </p>
-              <h2 className="mt-2 text-2xl font-semibold text-stone-950">
+              <h2 className="mt-2 text-2xl font-semibold text-[#1f2329]">
                 {mode === 'login' ? '登录你的待办清单' : '开启你的专属清单'}
               </h2>
             </div>
             <label className="mb-4 block">
-              <span className="mb-2 block text-sm font-medium text-stone-700">用户名</span>
+              <span className="mb-2 block text-sm font-medium text-slate-700">用户名</span>
               <input
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"
                 placeholder="请输入用户名"
                 autoComplete="username"
               />
             </label>
             <label className="mb-4 block">
-              <span className="mb-2 block text-sm font-medium text-stone-700">密码</span>
+              <span className="mb-2 block text-sm font-medium text-slate-700">密码</span>
               <input
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"
                 placeholder="至少 6 个字符"
                 type="password"
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -319,7 +319,7 @@ function App() {
             {authError && <InlineMessage type="error" message={authError} />}
             <button
               disabled={isAuthenticating}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-stone-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(37,99,235,0.22)] transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isAuthenticating && <Loader2 size={17} className="animate-spin" />}
               {mode === 'login' ? '登录' : '注册'}
@@ -330,7 +330,7 @@ function App() {
                 setMode(mode === 'login' ? 'register' : 'login')
                 setAuthError('')
               }}
-              className="mt-3 w-full rounded-lg px-4 py-3 text-sm font-semibold text-stone-600 transition hover:bg-stone-50"
+              className="mt-3 h-11 w-full rounded-lg px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-blue-600"
             >
               {mode === 'login' ? '还没有账号？立即注册' : '已有账号？去登录'}
             </button>
@@ -341,18 +341,18 @@ function App() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f6f2] px-3 py-4 text-stone-950 sm:px-6 sm:py-8 lg:px-8">
+    <main className="min-h-screen bg-[#f5f7fb] px-3 py-4 text-[#1f2329] sm:px-6 sm:py-8 lg:px-8">
       <ToastMessage toast={toast} />
       <section className="mx-auto max-w-7xl">
-        <header className="mb-6 flex flex-col gap-5 border-b border-stone-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <header className="mb-6 flex flex-col gap-5 border-b border-slate-200/80 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">个人工作区</p>
-            <h1 className="text-4xl font-semibold tracking-normal text-stone-950 sm:text-5xl">今日</h1>
-            <p className="text-sm text-stone-500">当前用户：{session.user.username}</p>
+            <p className="text-xs font-semibold tracking-[0.08em] text-blue-600">个人工作区</p>
+            <h1 className="text-4xl font-semibold tracking-normal text-[#1f2329] sm:text-5xl">今日</h1>
+            <p className="text-sm text-slate-500">当前用户：{session.user.username}</p>
           </div>
           <button
             onClick={() => setSession(null)}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 shadow-sm shadow-stone-200/60 transition hover:border-stone-300 hover:bg-stone-50 sm:w-auto"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-[0_6px_18px_rgba(31,35,41,0.05)] transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 sm:w-auto"
           >
             <LogOut size={17} />
             退出登录
@@ -361,37 +361,37 @@ function App() {
 
         <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="space-y-4 lg:sticky lg:top-8 lg:self-start">
-            <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-xl shadow-stone-300/20 sm:p-5">
+            <section className="rounded-xl border border-slate-100 bg-white p-4 shadow-[0_12px_36px_rgba(31,35,41,0.07)] sm:p-5">
               <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-stone-950">新建任务</h2>
-                <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">快速添加</span>
+                <h2 className="text-lg font-semibold text-[#1f2329]">新建任务</h2>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600">快速添加</span>
               </div>
               <form onSubmit={addTodo} className="space-y-4">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-stone-700">任务内容</span>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">任务内容</span>
                   <input
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
-                    className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
+                    className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"
                     placeholder="例如：整理项目简报"
                   />
                 </label>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                   <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-stone-700">截止日期</span>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">截止日期</span>
                     <input
                       value={dueDate}
                       onChange={(event) => setDueDate(event.target.value)}
-                      className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
+                      className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"
                       type="date"
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-stone-700">优先级</span>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">优先级</span>
                     <select
                       value={priority}
                       onChange={(event) => setPriority(event.target.value as Priority)}
-                      className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
+                      className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50/70 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"
                     >
                       <option value="Low">低</option>
                       <option value="Medium">中</option>
@@ -401,7 +401,7 @@ function App() {
                 </div>
                 <button
                   disabled={isSubmitting}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-stone-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(37,99,235,0.22)] transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSubmitting ? <Loader2 size={17} className="animate-spin" /> : <Plus size={17} />}
                   新建任务
@@ -416,18 +416,18 @@ function App() {
             </section>
           </aside>
 
-          <section className="min-w-0 rounded-lg border border-stone-200 bg-white p-3 shadow-xl shadow-stone-300/20 sm:p-5">
+          <section className="min-w-0 rounded-xl border border-slate-100 bg-white p-3 shadow-[0_12px_36px_rgba(31,35,41,0.07)] sm:p-5">
             <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="grid grid-cols-3 rounded-lg border border-stone-200 bg-stone-50 p-1">
+              <div className="grid grid-cols-3 rounded-lg border border-slate-200 bg-slate-50 p-1">
                 {(['all', 'active', 'completed'] as Filter[]).map((item) => (
                   <button
                     key={item}
                     onClick={() => setFilter(item)}
                     className={clsx(
-                      'rounded-md px-3 py-2 text-sm font-semibold transition sm:px-4',
+                      'h-10 rounded-md px-3 text-sm font-semibold transition sm:px-4',
                       filter === item
-                        ? 'bg-white text-stone-950 shadow-sm shadow-stone-200/80'
-                        : 'text-stone-500 hover:text-stone-900',
+                        ? 'bg-white text-blue-700 shadow-[0_4px_12px_rgba(31,35,41,0.08)]'
+                        : 'text-slate-500 hover:text-slate-900',
                     )}
                   >
                     {filterLabels[item]}
@@ -442,15 +442,15 @@ function App() {
                 className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
               >
                 <label className="relative min-w-0">
-                  <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    className="w-full rounded-lg border border-stone-200 bg-stone-50/60 py-3 pl-10 pr-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
+                    className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50/70 pl-10 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50"
                     placeholder="搜索待办事项"
                   />
                 </label>
-                <button className="rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-800 shadow-sm shadow-stone-200/60 transition hover:bg-stone-50">
+                <button className="h-11 rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 shadow-[0_6px_18px_rgba(31,35,41,0.05)] transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
                   搜索
                 </button>
               </form>
@@ -470,10 +470,10 @@ function App() {
                     <article
                       key={todo.id}
                       className={clsx(
-                        'rounded-lg border bg-white p-4 shadow-sm transition sm:p-5',
-                        todo.completed && 'border-stone-100 bg-stone-50/70',
-                        !todo.completed && !overdue && 'border-stone-200 hover:border-stone-300 hover:shadow-md hover:shadow-stone-200/60',
-                        overdue && 'border-rose-200 bg-rose-50/55 shadow-rose-100/70',
+                        'rounded-xl border bg-white p-4 shadow-[0_6px_20px_rgba(31,35,41,0.05)] transition sm:p-5',
+                        todo.completed && 'border-slate-100 bg-slate-50/70',
+                        !todo.completed && !overdue && 'border-slate-100 hover:border-blue-200 hover:shadow-[0_10px_28px_rgba(31,35,41,0.08)]',
+                        overdue && 'border-rose-100 bg-rose-50/70 shadow-[0_8px_26px_rgba(225,29,72,0.08)]',
                       )}
                     >
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -484,8 +484,8 @@ function App() {
                             className={clsx(
                               'mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-50',
                               todo.completed
-                                ? 'border-teal-700 bg-teal-700 text-white'
-                                : 'border-stone-300 bg-white text-stone-400 hover:border-teal-700 hover:text-teal-700',
+                                ? 'border-blue-600 bg-blue-600 text-white'
+                                : 'border-slate-300 bg-white text-slate-400 hover:border-blue-500 hover:text-blue-600',
                             )}
                             aria-label={todo.completed ? '标记为进行中' : '标记为已完成'}
                           >
@@ -498,20 +498,20 @@ function App() {
                                 <input
                                   value={editingTitle}
                                   onChange={(event) => setEditingTitle(event.target.value)}
-                                  className="min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100"
+                                  className="h-10 min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
                                   autoFocus
                                 />
-                                <button className="rounded-lg bg-stone-950 px-3 py-2 text-sm font-semibold text-white">保存</button>
+                                <button className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700">保存</button>
                               </form>
                             ) : (
-                              <h3 className={clsx('break-words text-base font-semibold text-stone-950 sm:text-lg', todo.completed && 'text-stone-400 line-through')}>
+                              <h3 className={clsx('break-words text-base font-semibold leading-7 text-[#1f2329] sm:text-lg', todo.completed && 'text-slate-400 line-through')}>
                                 {todo.title}
                               </h3>
                             )}
 
                             <div className="mt-3 flex flex-wrap gap-2">
                               {overdue && (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700">
+                                <span className="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-white px-3 py-1 text-xs font-semibold text-rose-700">
                                   <AlertTriangle size={14} />
                                   已逾期
                                 </span>
@@ -522,7 +522,7 @@ function App() {
                               <span
                                 className={clsx(
                                   'inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-xs font-semibold',
-                                  overdue ? 'border-rose-200 text-rose-700' : 'border-stone-200 text-stone-500',
+                                  overdue ? 'border-rose-100 text-rose-700' : 'border-slate-100 text-slate-500',
                                 )}
                               >
                                 <CalendarDays size={14} />
@@ -537,7 +537,7 @@ function App() {
                             disabled={busy}
                             value={todo.priority}
                             onChange={(event) => patchTodo(todo.id, { priority: event.target.value as Priority })}
-                            className="min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none transition focus:border-stone-400 disabled:opacity-50"
+                            className="h-10 min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50 disabled:opacity-50"
                             aria-label="修改优先级"
                           >
                             <option value="Low">低</option>
@@ -548,14 +548,14 @@ function App() {
                             disabled={busy}
                             value={todo.dueDate ?? ''}
                             onChange={(event) => patchTodo(todo.id, { dueDate: event.target.value || null })}
-                            className="min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none transition focus:border-stone-400 disabled:opacity-50"
+                            className="h-10 min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50 disabled:opacity-50"
                             type="date"
                             aria-label="修改截止日期"
                           />
                           <button
                             disabled={busy}
                             onClick={() => startEditing(todo)}
-                            className="rounded-lg border border-stone-200 bg-white p-2 text-stone-500 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 disabled:opacity-50"
+                            className="h-10 rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
                             aria-label="编辑待办事项"
                           >
                             <Edit3 size={18} />
@@ -563,7 +563,7 @@ function App() {
                           <button
                             disabled={busy}
                             onClick={() => deleteTodo(todo)}
-                            className="rounded-lg border border-stone-200 bg-white p-2 text-stone-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
+                            className="h-10 rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
                             aria-label="删除待办事项"
                           >
                             <Trash2 size={18} />
@@ -584,15 +584,15 @@ function App() {
 
 function Stat({ label, value, tone }: { label: string; value: number; tone: 'teal' | 'stone' | 'rose' }) {
   const toneClass = {
-    teal: 'text-teal-700',
-    stone: 'text-stone-900',
+    teal: 'text-blue-700',
+    stone: 'text-slate-900',
     rose: 'text-rose-700',
   }[tone]
 
   return (
-    <div className="rounded-lg border border-stone-200 bg-white p-4 text-center shadow-sm shadow-stone-200/60">
+    <div className="rounded-xl border border-slate-100 bg-white p-4 text-center shadow-[0_8px_24px_rgba(31,35,41,0.05)]">
       <p className={clsx('text-2xl font-semibold', toneClass)}>{value}</p>
-      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-400">{label}</p>
+      <p className="mt-1 text-xs font-semibold tracking-[0.06em] text-slate-400">{label}</p>
     </div>
   )
 }
@@ -604,12 +604,19 @@ function ToastMessage({ toast }: { toast: Toast }) {
     <div className="fixed left-3 right-3 top-3 z-50 mx-auto max-w-md sm:left-auto sm:right-6 sm:top-6">
       <div
         className={clsx(
-          'flex items-start gap-3 rounded-lg border bg-white px-4 py-3 text-sm font-medium shadow-xl shadow-stone-300/30',
-          toast.type === 'success' ? 'border-teal-200 text-teal-800' : 'border-rose-200 text-rose-800',
+          'flex items-start gap-3 rounded-xl border bg-white px-4 py-3 text-sm font-medium shadow-[0_18px_45px_rgba(31,35,41,0.14)]',
+          toast.type === 'success' ? 'border-blue-100 text-blue-800' : 'border-rose-100 text-rose-800',
         )}
       >
-        {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
-        <span>{toast.message}</span>
+        <span
+          className={clsx(
+            'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
+            toast.type === 'success' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600',
+          )}
+        >
+          {toast.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+        </span>
+        <span className="leading-6">{toast.message}</span>
       </div>
     </div>
   )
@@ -619,8 +626,8 @@ function InlineMessage({ type, message }: { type: 'error'; message: string }) {
   return (
     <p
       className={clsx(
-        'mb-4 rounded-lg border px-4 py-3 text-sm font-medium',
-        type === 'error' && 'border-rose-200 bg-rose-50 text-rose-700',
+        'mb-4 rounded-lg border px-4 py-3 text-sm font-medium leading-6',
+        type === 'error' && 'border-rose-100 bg-rose-50 text-rose-700',
       )}
     >
       {message}
@@ -632,11 +639,11 @@ function LoadingState() {
   return (
     <div className="space-y-3">
       {[0, 1, 2].map((item) => (
-        <div key={item} className="rounded-lg border border-stone-200 bg-stone-50 p-5">
-          <div className="h-4 w-2/3 animate-pulse rounded-full bg-stone-200" />
+        <div key={item} className="rounded-xl border border-slate-100 bg-slate-50 p-5">
+          <div className="h-4 w-2/3 animate-pulse rounded-full bg-slate-200" />
           <div className="mt-4 flex gap-2">
-            <div className="h-6 w-20 animate-pulse rounded-full bg-stone-200" />
-            <div className="h-6 w-28 animate-pulse rounded-full bg-stone-200" />
+            <div className="h-6 w-20 animate-pulse rounded-full bg-slate-200" />
+            <div className="h-6 w-28 animate-pulse rounded-full bg-slate-200" />
           </div>
         </div>
       ))}
@@ -653,12 +660,12 @@ function EmptyState({ filter, hasSearch }: { filter: Filter; hasSearch: boolean 
       : '从左侧面板创建你的第一条待办事项。'
 
   return (
-    <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50/70 px-5 py-14 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-500">
+    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-14 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-slate-100 bg-white text-slate-500 shadow-[0_8px_22px_rgba(31,35,41,0.06)]">
         <Inbox size={22} />
       </div>
-      <p className="mt-4 text-lg font-semibold text-stone-950">{title}</p>
-      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-stone-500">{body}</p>
+      <p className="mt-4 text-lg font-semibold text-[#1f2329]">{title}</p>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">{body}</p>
     </div>
   )
 }
