@@ -47,6 +47,39 @@ const priorityStyles: Record<Priority, string> = {
   High: 'border-rose-200 bg-rose-50 text-rose-700',
 }
 
+const priorityLabels: Record<Priority, string> = {
+  Low: '低',
+  Medium: '中',
+  High: '高',
+}
+
+const filterLabels: Record<Filter, string> = {
+  all: '全部',
+  active: '进行中',
+  completed: '已完成',
+}
+
+const errorMessages: Record<string, string> = {
+  'Too many sign-in attempts. Please try again later.': '登录尝试过于频繁，请稍后再试。',
+  'JWT_SECRET environment variable is required.': '服务配置缺失，请联系管理员。',
+  'DATABASE_URL environment variable is required.': '数据库配置缺失，请联系管理员。',
+  'Authentication is required.': '请先登录后再继续操作。',
+  'That username is already taken.': '该用户名已被占用。',
+  'Invalid username or password.': '用户名或密码不正确。',
+  'Route not found': '请求的接口不存在。',
+  'Please check the submitted fields.': '请检查填写内容。',
+  'Something went wrong. Please try again.': '操作失败，请稍后重试。',
+  'Invalid todo id.': '任务编号无效。',
+  'Todo not found.': '任务不存在或已被删除。',
+  'Username must be at least 3 characters.': '用户名至少需要 3 个字符。',
+  'Username must be 30 characters or fewer.': '用户名不能超过 30 个字符。',
+  'Username can only contain letters, numbers, underscores, and hyphens.': '用户名只能包含字母、数字、下划线和连字符。',
+  'Password must be at least 6 characters.': '密码至少需要 6 个字符。',
+  'Todo title is required.': '请输入任务内容。',
+  'At least one field is required.': '请至少修改一项内容。',
+  'Request failed': '请求失败，请稍后重试。',
+}
+
 const savedSession = localStorage.getItem('todo-session')
 const apiBaseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? ''
 
@@ -113,7 +146,7 @@ function App() {
 
     if (!response.ok) {
       const payload = await response.json().catch(() => null)
-      throw new Error(payload?.error?.message ?? 'Request failed')
+      throw new Error(toChineseError(payload?.error?.message ?? 'Request failed'))
     }
 
     if (response.status === 204) return null as T
@@ -137,9 +170,9 @@ function App() {
       setSession(data)
       setUsername('')
       setPassword('')
-      showToast('success', mode === 'login' ? 'Signed in successfully.' : 'Account created.')
+      showToast('success', mode === 'login' ? '登录成功。' : '注册成功。')
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Unable to sign in')
+      setAuthError(error instanceof Error ? error.message : '无法登录，请稍后重试。')
     } finally {
       setIsAuthenticating(false)
     }
@@ -155,7 +188,7 @@ function App() {
       const data = await api<{ todos: Todo[] }>(`/todos?${params}`)
       setTodos(data.todos)
     } catch (error) {
-      showToast('error', error instanceof Error ? error.message : 'Unable to load todos.')
+      showToast('error', error instanceof Error ? error.message : '待办事项加载失败。')
     } finally {
       setIsLoading(false)
     }
@@ -175,9 +208,9 @@ function App() {
       setDueDate('')
       setPriority('Medium')
       await loadTodos()
-      showToast('success', 'Todo added.')
+      showToast('success', '待办事项已创建。')
     } catch (error) {
-      showToast('error', error instanceof Error ? error.message : 'Unable to add todo.')
+      showToast('error', error instanceof Error ? error.message : '待办事项创建失败。')
     } finally {
       setIsSubmitting(false)
     }
@@ -189,25 +222,25 @@ function App() {
     try {
       await api(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
       await loadTodos()
-      showToast('success', 'Todo updated.')
+      showToast('success', '待办事项已更新。')
     } catch (error) {
-      showToast('error', error instanceof Error ? error.message : 'Unable to update todo.')
+      showToast('error', error instanceof Error ? error.message : '待办事项更新失败。')
     } finally {
       setBusyTodoId(null)
     }
   }
 
   async function deleteTodo(todo: Todo) {
-    const confirmed = window.confirm(`Delete "${todo.title}"? This cannot be undone.`)
+    const confirmed = window.confirm(`确认删除“${todo.title}”？此操作无法撤销。`)
     if (!confirmed) return
     setBusyTodoId(todo.id)
 
     try {
       await api(`/todos/${todo.id}`, { method: 'DELETE' })
       await loadTodos()
-      showToast('success', 'Todo deleted.')
+      showToast('success', '待办事项已删除。')
     } catch (error) {
-      showToast('error', error instanceof Error ? error.message : 'Unable to delete todo.')
+      showToast('error', error instanceof Error ? error.message : '待办事项删除失败。')
     } finally {
       setBusyTodoId(null)
     }
@@ -234,18 +267,18 @@ function App() {
           <div className="space-y-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white/80 px-4 py-2 text-sm font-medium text-stone-600 shadow-sm shadow-stone-200/50">
               <ShieldCheck size={17} className="text-teal-700" />
-              Private workspaces for local users
+              本地用户专属空间
             </div>
             <div className="space-y-5">
               <h1 className="max-w-3xl text-5xl font-semibold tracking-normal text-stone-950 sm:text-6xl">
-                A quieter place to finish your day.
+                更从容地安排今天的事项
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-stone-600">
-                Plan the next task, surface what is overdue, and keep completed work neatly out of the way.
+                规划下一步，及时看到逾期任务，也让已完成的事项保持清爽有序。
               </p>
             </div>
             <div className="grid max-w-2xl gap-3 sm:grid-cols-3">
-              {['Due dates', 'Priorities', 'Fast search'].map((item) => (
+              {['截止日期', '优先级', '快速搜索'].map((item) => (
                 <div key={item} className="rounded-lg border border-stone-200 bg-white/85 p-4 shadow-sm shadow-stone-200/60">
                   <p className="text-sm font-semibold text-stone-900">{item}</p>
                 </div>
@@ -256,29 +289,29 @@ function App() {
           <form onSubmit={handleAuth} className="rounded-lg border border-stone-200 bg-white p-6 shadow-2xl shadow-stone-300/25">
             <div className="mb-6">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
-                {mode === 'login' ? 'Welcome back' : 'Create account'}
+                {mode === 'login' ? '欢迎回来' : '创建账号'}
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-stone-950">
-                {mode === 'login' ? 'Sign in to your list' : 'Start your private list'}
+                {mode === 'login' ? '登录你的待办清单' : '开启你的专属清单'}
               </h2>
             </div>
             <label className="mb-4 block">
-              <span className="mb-2 block text-sm font-medium text-stone-700">Username</span>
+              <span className="mb-2 block text-sm font-medium text-stone-700">用户名</span>
               <input
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
-                placeholder="alex"
+                placeholder="请输入用户名"
                 autoComplete="username"
               />
             </label>
             <label className="mb-4 block">
-              <span className="mb-2 block text-sm font-medium text-stone-700">Password</span>
+              <span className="mb-2 block text-sm font-medium text-stone-700">密码</span>
               <input
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
-                placeholder="At least 6 characters"
+                placeholder="至少 6 个字符"
                 type="password"
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               />
@@ -289,7 +322,7 @@ function App() {
               className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-stone-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isAuthenticating && <Loader2 size={17} className="animate-spin" />}
-              {mode === 'login' ? 'Sign in' : 'Create account'}
+              {mode === 'login' ? '登录' : '注册'}
             </button>
             <button
               type="button"
@@ -299,7 +332,7 @@ function App() {
               }}
               className="mt-3 w-full rounded-lg px-4 py-3 text-sm font-semibold text-stone-600 transition hover:bg-stone-50"
             >
-              {mode === 'login' ? 'Need an account? Register' : 'Already have an account? Sign in'}
+              {mode === 'login' ? '还没有账号？立即注册' : '已有账号？去登录'}
             </button>
           </form>
         </section>
@@ -313,16 +346,16 @@ function App() {
       <section className="mx-auto max-w-7xl">
         <header className="mb-6 flex flex-col gap-5 border-b border-stone-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Personal workspace</p>
-            <h1 className="text-4xl font-semibold tracking-normal text-stone-950 sm:text-5xl">Today</h1>
-            <p className="text-sm text-stone-500">Signed in as {session.user.username}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">个人工作区</p>
+            <h1 className="text-4xl font-semibold tracking-normal text-stone-950 sm:text-5xl">今日</h1>
+            <p className="text-sm text-stone-500">当前用户：{session.user.username}</p>
           </div>
           <button
             onClick={() => setSession(null)}
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 shadow-sm shadow-stone-200/60 transition hover:border-stone-300 hover:bg-stone-50 sm:w-auto"
           >
             <LogOut size={17} />
-            Logout
+            退出登录
           </button>
         </header>
 
@@ -330,22 +363,22 @@ function App() {
           <aside className="space-y-4 lg:sticky lg:top-8 lg:self-start">
             <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-xl shadow-stone-300/20 sm:p-5">
               <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-stone-950">New task</h2>
-                <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">Quick add</span>
+                <h2 className="text-lg font-semibold text-stone-950">新建任务</h2>
+                <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">快速添加</span>
               </div>
               <form onSubmit={addTodo} className="space-y-4">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-stone-700">Task</span>
+                  <span className="mb-2 block text-sm font-medium text-stone-700">任务内容</span>
                   <input
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
                     className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
-                    placeholder="Write project brief"
+                    placeholder="例如：整理项目简报"
                   />
                 </label>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                   <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-stone-700">Due date</span>
+                    <span className="mb-2 block text-sm font-medium text-stone-700">截止日期</span>
                     <input
                       value={dueDate}
                       onChange={(event) => setDueDate(event.target.value)}
@@ -354,15 +387,15 @@ function App() {
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-stone-700">Priority</span>
+                    <span className="mb-2 block text-sm font-medium text-stone-700">优先级</span>
                     <select
                       value={priority}
                       onChange={(event) => setPriority(event.target.value as Priority)}
                       className="w-full rounded-lg border border-stone-200 bg-stone-50/60 px-4 py-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
                     >
-                      <option>Low</option>
-                      <option>Medium</option>
-                      <option>High</option>
+                      <option value="Low">低</option>
+                      <option value="Medium">中</option>
+                      <option value="High">高</option>
                     </select>
                   </label>
                 </div>
@@ -371,15 +404,15 @@ function App() {
                   className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-stone-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSubmitting ? <Loader2 size={17} className="animate-spin" /> : <Plus size={17} />}
-                  Add task
+                  新建任务
                 </button>
               </form>
             </section>
 
             <section className="grid grid-cols-3 gap-3">
-              <Stat label="Today" value={stats.today} tone="teal" />
-              <Stat label="Done" value={stats.completed} tone="stone" />
-              <Stat label="Open" value={stats.active} tone="rose" />
+              <Stat label="今日" value={stats.today} tone="teal" />
+              <Stat label="已完成" value={stats.completed} tone="stone" />
+              <Stat label="进行中" value={stats.active} tone="rose" />
             </section>
           </aside>
 
@@ -391,13 +424,13 @@ function App() {
                     key={item}
                     onClick={() => setFilter(item)}
                     className={clsx(
-                      'rounded-md px-3 py-2 text-sm font-semibold capitalize transition sm:px-4',
+                      'rounded-md px-3 py-2 text-sm font-semibold transition sm:px-4',
                       filter === item
                         ? 'bg-white text-stone-950 shadow-sm shadow-stone-200/80'
                         : 'text-stone-500 hover:text-stone-900',
                     )}
                   >
-                    {item}
+                    {filterLabels[item]}
                   </button>
                 ))}
               </div>
@@ -414,11 +447,11 @@ function App() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     className="w-full rounded-lg border border-stone-200 bg-stone-50/60 py-3 pl-10 pr-3 outline-none transition focus:border-stone-400 focus:bg-white focus:ring-4 focus:ring-stone-100"
-                    placeholder="Search tasks"
+                    placeholder="搜索待办事项"
                   />
                 </label>
                 <button className="rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-800 shadow-sm shadow-stone-200/60 transition hover:bg-stone-50">
-                  Search
+                  搜索
                 </button>
               </form>
             </div>
@@ -454,7 +487,7 @@ function App() {
                                 ? 'border-teal-700 bg-teal-700 text-white'
                                 : 'border-stone-300 bg-white text-stone-400 hover:border-teal-700 hover:text-teal-700',
                             )}
-                            aria-label={todo.completed ? 'Mark active' : 'Mark completed'}
+                            aria-label={todo.completed ? '标记为进行中' : '标记为已完成'}
                           >
                             {busy ? <Loader2 size={16} className="animate-spin" /> : todo.completed ? <Check size={16} /> : <Circle size={16} />}
                           </button>
@@ -468,7 +501,7 @@ function App() {
                                   className="min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 outline-none focus:border-stone-400 focus:ring-4 focus:ring-stone-100"
                                   autoFocus
                                 />
-                                <button className="rounded-lg bg-stone-950 px-3 py-2 text-sm font-semibold text-white">Save</button>
+                                <button className="rounded-lg bg-stone-950 px-3 py-2 text-sm font-semibold text-white">保存</button>
                               </form>
                             ) : (
                               <h3 className={clsx('break-words text-base font-semibold text-stone-950 sm:text-lg', todo.completed && 'text-stone-400 line-through')}>
@@ -480,11 +513,11 @@ function App() {
                               {overdue && (
                                 <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700">
                                   <AlertTriangle size={14} />
-                                  Overdue
+                                  已逾期
                                 </span>
                               )}
                               <span className={clsx('rounded-full border px-3 py-1 text-xs font-semibold', priorityStyles[todo.priority])}>
-                                {todo.priority}
+                                {priorityLabels[todo.priority]}
                               </span>
                               <span
                                 className={clsx(
@@ -493,7 +526,7 @@ function App() {
                                 )}
                               >
                                 <CalendarDays size={14} />
-                                {todo.dueDate ? formatDate(todo.dueDate) : 'No due date'}
+                                {todo.dueDate ? formatDate(todo.dueDate) : '无截止日期'}
                               </span>
                             </div>
                           </div>
@@ -505,11 +538,11 @@ function App() {
                             value={todo.priority}
                             onChange={(event) => patchTodo(todo.id, { priority: event.target.value as Priority })}
                             className="min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none transition focus:border-stone-400 disabled:opacity-50"
-                            aria-label="Change priority"
+                            aria-label="修改优先级"
                           >
-                            <option>Low</option>
-                            <option>Medium</option>
-                            <option>High</option>
+                            <option value="Low">低</option>
+                            <option value="Medium">中</option>
+                            <option value="High">高</option>
                           </select>
                           <input
                             disabled={busy}
@@ -517,13 +550,13 @@ function App() {
                             onChange={(event) => patchTodo(todo.id, { dueDate: event.target.value || null })}
                             className="min-w-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold outline-none transition focus:border-stone-400 disabled:opacity-50"
                             type="date"
-                            aria-label="Change due date"
+                            aria-label="修改截止日期"
                           />
                           <button
                             disabled={busy}
                             onClick={() => startEditing(todo)}
                             className="rounded-lg border border-stone-200 bg-white p-2 text-stone-500 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 disabled:opacity-50"
-                            aria-label="Edit todo"
+                            aria-label="编辑待办事项"
                           >
                             <Edit3 size={18} />
                           </button>
@@ -531,7 +564,7 @@ function App() {
                             disabled={busy}
                             onClick={() => deleteTodo(todo)}
                             className="rounded-lg border border-stone-200 bg-white p-2 text-stone-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
-                            aria-label="Delete todo"
+                            aria-label="删除待办事项"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -612,12 +645,12 @@ function LoadingState() {
 }
 
 function EmptyState({ filter, hasSearch }: { filter: Filter; hasSearch: boolean }) {
-  const title = hasSearch ? 'No matching tasks' : filter === 'completed' ? 'No completed tasks yet' : 'No tasks here'
+  const title = hasSearch ? '没有符合条件的待办事项' : filter === 'completed' ? '暂无已完成任务' : '暂无任务'
   const body = hasSearch
-    ? 'Try a different search term or clear the search field.'
+    ? '换个关键词试试，或清空搜索内容。'
     : filter === 'active'
-      ? 'Everything active is already handled. Nice and quiet.'
-      : 'Add your first task from the panel on the left.'
+      ? '当前没有待完成事项，可以稍微放松一下。'
+      : '从左侧面板创建你的第一条待办事项。'
 
   return (
     <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50/70 px-5 py-14 text-center">
@@ -644,7 +677,12 @@ function isOverdue(todo: Todo) {
 
 function formatDate(value: string) {
   const [year, month, day] = value.split('-')
-  return `${month}/${day}/${year}`
+  return `${year}-${month}-${day}`
+}
+
+function toChineseError(message: unknown) {
+  if (typeof message !== 'string') return '操作失败，请稍后重试。'
+  return errorMessages[message] ?? '操作失败，请稍后重试。'
 }
 
 export default App
