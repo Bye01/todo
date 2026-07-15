@@ -15,8 +15,6 @@ FROM node:22-slim AS runtime
 
 ENV NODE_ENV=production
 ENV PORT=4000
-ENV DATABASE_PATH=/app/server/data/todos.sqlite
-ENV CLIENT_ORIGIN=*
 
 WORKDIR /app
 

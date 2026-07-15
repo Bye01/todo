@@ -1,6 +1,6 @@
 # Modern Todo Web App
 
-A full-stack todo app with React, Vite, TypeScript, Express, SQLite, REST APIs, Tailwind CSS, local username/password login, and per-user todo ownership.
+A full-stack todo app with React, Vite, TypeScript, Express, PostgreSQL, JWT authentication, REST APIs, and Tailwind CSS.
 
 ## Features
 
@@ -10,18 +10,16 @@ A full-stack todo app with React, Vite, TypeScript, Express, SQLite, REST APIs, 
 - Search todos by title
 - Due dates and Low, Medium, High priorities
 - Each user only sees their own todos
-- SQLite persistence
+- PostgreSQL persistence through `DATABASE_URL`
 - API validation and structured error responses
 - Responsive Tailwind CSS interface
-- Docker support
 
 ## Project Structure
 
 ```text
 .
 ├── client/          # React + Vite + TypeScript frontend
-├── server/          # Express + SQLite API
-│   ├── data/        # Local SQLite database files
+├── server/          # Express + TypeScript API
 │   └── src/
 ├── scripts/         # API verification script
 ├── Dockerfile
@@ -38,13 +36,34 @@ npm install
 npm --prefix client install
 ```
 
-Copy environment settings:
+Create local environment files:
 
 ```bash
 cp .env.example .env
+cp client/.env.example client/.env.local
 ```
 
-Set `JWT_SECRET` to a long random value before starting the app.
+Set these values in `.env`:
+
+```text
+PORT=4000
+DATABASE_URL=postgresql://todo_user:todo_password@localhost:5432/todo_app
+DATABASE_SSL=false
+JWT_SECRET=<generate-a-long-random-secret>
+CORS_ORIGIN=http://localhost:5173
+```
+
+Set this value in `client/.env.local`:
+
+```text
+VITE_API_URL=http://localhost:4000
+```
+
+Start a local PostgreSQL database with Docker:
+
+```bash
+docker compose up postgres
+```
 
 Start the app:
 
@@ -52,16 +71,25 @@ Start the app:
 npm run dev
 ```
 
-The frontend runs at `http://localhost:5173` and proxies API calls to `http://localhost:4000`.
+The frontend runs at `http://localhost:5173` and the API runs at `http://localhost:4000`.
 
 ## Environment Variables
 
-| Name | Purpose | Default |
-| --- | --- | --- |
-| `PORT` | API server port | `4000` |
-| `DATABASE_PATH` | SQLite file path | `server/data/todos.sqlite` |
-| `JWT_SECRET` | Token signing secret | Development fallback only |
-| `CLIENT_ORIGIN` | Allowed frontend origin | `http://localhost:5173` |
+Backend:
+
+| Name | Purpose |
+| --- | --- |
+| `PORT` | API server port. Render sets this automatically. |
+| `DATABASE_URL` | PostgreSQL connection string. Required. |
+| `DATABASE_SSL` | Set to `true` for hosted PostgreSQL if SSL is required. |
+| `JWT_SECRET` | Long random token signing secret. Required. |
+| `CORS_ORIGIN` | Allowed frontend origin, such as your Vercel URL. |
+
+Frontend:
+
+| Name | Purpose |
+| --- | --- |
+| `VITE_API_URL` | Public backend API origin, such as your Render service URL. |
 
 ## REST API
 
@@ -77,33 +105,7 @@ All todo routes require `Authorization: Bearer <token>`.
 | `PATCH` | `/api/todos/:id` | Update todo |
 | `DELETE` | `/api/todos/:id` | Delete todo |
 
-## Validation
-
-The API validates usernames, passwords, todo titles, due dates, priority values, filters, and update payloads with Zod. Errors return a consistent JSON shape:
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Please check the submitted fields.",
-    "details": []
-  }
-}
-```
-
-## Docker
-
-Build and run with Docker Compose:
-
-```bash
-docker compose up --build
-```
-
-Open `http://localhost:4000`.
-
-Docker Compose requires `JWT_SECRET` to be set in your shell or `.env` file.
-
-## Verification
+## Build And Verification
 
 Build both apps:
 
@@ -111,8 +113,54 @@ Build both apps:
 npm run build
 ```
 
-Verify all API flows:
+Verify API flows:
 
 ```bash
 npm run verify:api
 ```
+
+The verification script uses an in-memory PostgreSQL-compatible database so it can run without a local PostgreSQL server.
+
+## Render Backend Deployment
+
+Create a PostgreSQL database on Render first. Then create a Web Service for this repository.
+
+Recommended Render settings:
+
+```text
+Root Directory: .
+Build Command: npm install && npm run render:build
+Start Command: npm run render:start
+```
+
+Set these Render environment variables:
+
+```text
+DATABASE_URL=<Render PostgreSQL internal connection string>
+DATABASE_SSL=true
+JWT_SECRET=<long random secret generated outside git>
+CORS_ORIGIN=<your Vercel frontend URL>
+```
+
+Do not put real secrets in `.env.example`, README, or committed files.
+
+## Vercel Frontend Deployment
+
+Create a Vercel project that points to the `client` directory.
+
+Recommended Vercel settings:
+
+```text
+Root Directory: client
+Build Command: npm run build
+Output Directory: dist
+Install Command: npm install
+```
+
+Set this Vercel environment variable:
+
+```text
+VITE_API_URL=<your Render backend URL>
+```
+
+After both services are deployed, update Render `CORS_ORIGIN` to the final Vercel production URL and redeploy the backend.

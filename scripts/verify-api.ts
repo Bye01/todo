@@ -1,23 +1,23 @@
-import fs from 'node:fs/promises'
-import os from 'node:os'
-import path from 'node:path'
 import type { Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
 
-const port = 4107
-const baseUrl = `http://127.0.0.1:${port}/api`
+let baseUrl = ''
 
 async function main() {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'todo-api-'))
-  process.env.PORT = String(port)
-  process.env.DATABASE_PATH = path.join(tempDir, 'verify.sqlite')
+  process.env.PORT = '0'
+  process.env.DATABASE_URL = 'pgmem://verify'
+  process.env.DATABASE_SSL = 'false'
   process.env.JWT_SECRET = 'verify-secret'
-  process.env.CLIENT_ORIGIN = '*'
+  process.env.CORS_ORIGIN = '*'
 
-  const [{ createApp }, { closeDb }] = await Promise.all([import('../server/src/app'), import('../server/src/db')])
-  const server = createApp().listen(port)
+  const [{ createApp }, { closeDb, initDb }] = await Promise.all([import('../server/src/app'), import('../server/src/db')])
+  await initDb()
+  const server = createApp().listen(0, '127.0.0.1')
 
   try {
     await waitForListening(server)
+    const address = server.address() as AddressInfo
+    baseUrl = `http://127.0.0.1:${address.port}/api`
 
     const first = await request('/auth/register', {
       method: 'POST',
@@ -87,8 +87,7 @@ async function main() {
     console.log('API verification passed.')
   } finally {
     await closeServer(server)
-    closeDb()
-    await fs.rm(tempDir, { recursive: true, force: true })
+    await closeDb()
   }
 }
 

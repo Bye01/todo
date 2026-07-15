@@ -1,16 +1,35 @@
 services:
-  todo-app:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: todo_app
+      POSTGRES_USER: todo_user
+      POSTGRES_PASSWORD: todo_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U todo_user -d todo_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  todo-api:
     build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "4000:4000"
     environment:
-      PORT: 4000
-      DATABASE_PATH: /app/server/data/todos.sqlite
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
-      CLIENT_ORIGIN: "*"
       NODE_ENV: production
-    volumes:
-      - todo-data:/app/server/data
+      PORT: 4000
+      DATABASE_URL: postgresql://todo_user:todo_password@postgres:5432/todo_app
+      DATABASE_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
 
 volumes:
-  todo-data:
+  postgres-data:

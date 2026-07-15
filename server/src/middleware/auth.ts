@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { config } from '../config'
-import { getDb } from '../db'
+import { query } from '../db'
 import type { AuthenticatedRequest, User } from '../types'
 import { AppError } from '../utils/errors'
 
@@ -13,7 +13,7 @@ export function signToken(user: User) {
   return jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' })
 }
 
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.header('authorization')
   const token = header?.startsWith('Bearer ') ? header.slice(7) : null
 
@@ -23,9 +23,8 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
 
   try {
     const payload = jwt.verify(token, config.jwtSecret) as TokenPayload
-    const user = getDb()
-      .prepare('SELECT id, username FROM users WHERE id = ?')
-      .get(payload.userId) as User | undefined
+    const result = await query<User>('SELECT id, username FROM users WHERE id = $1', [payload.userId])
+    const user = result.rows[0]
 
     if (!user) {
       return next(new AppError(401, 'Authentication is required.', 'UNAUTHORIZED'))

@@ -48,6 +48,7 @@ const priorityStyles: Record<Priority, string> = {
 }
 
 const savedSession = localStorage.getItem('todo-session')
+const apiBaseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? ''
 
 function App() {
   const [session, setSession] = useState<Session | null>(() => (savedSession ? JSON.parse(savedSession) : null))
@@ -101,7 +102,7 @@ function App() {
   }, [toast])
 
   async function api<T>(path: string, options: RequestInit = {}) {
-    const response = await fetch(`/api${path}`, {
+    const response = await fetch(`${apiBaseUrl}/api${path}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',

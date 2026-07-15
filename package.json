@@ -1,7 +1,7 @@
 {
   "name": "todo-app",
   "version": "1.0.0",
-  "description": "A modern full-stack todo web app with React, Express, and SQLite.",
+  "description": "A modern full-stack todo web app with React, Express, and PostgreSQL.",
   "main": "index.js",
   "scripts": {
     "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev:server\" \"npm run dev:client\"",
@@ -12,6 +12,8 @@
     "build:server": "tsc -p server/tsconfig.json",
     "build:client": "npm --prefix client run build",
     "start": "node server/dist/server.js",
+    "render:build": "npm run build:server",
+    "render:start": "node server/dist/server.js",
     "verify:api": "tsx scripts/verify-api.ts"
   },
   "keywords": [],
@@ -20,21 +22,22 @@
   "type": "commonjs",
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.11.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "jsonwebtoken": "^9.0.3",
+    "pg": "^8.22.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.1.1",
+    "@types/pg": "^8.20.0",
     "concurrently": "^10.0.3",
+    "pg-mem": "^3.0.14",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2"
   }

@@ -1,6 +1,7 @@
 import cors from 'cors'
 import express from 'express'
 import rateLimit from 'express-rate-limit'
+import fs from 'node:fs'
 import path from 'node:path'
 import { config } from './config'
 import { requireAuth } from './middleware/auth'
@@ -25,7 +26,7 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: config.clientOrigin === '*' ? true : config.clientOrigin,
+      origin: config.corsOrigin === '*' ? true : config.corsOrigin,
       credentials: true,
     }),
   )
@@ -40,10 +41,12 @@ export function createApp() {
 
   if (config.isProduction) {
     const clientDist = path.resolve(__dirname, '..', '..', 'client', 'dist')
-    app.use(express.static(clientDist))
-    app.get(/^\/(?!api).*/, (_req, res) => {
-      res.sendFile(path.join(clientDist, 'index.html'))
-    })
+    if (fs.existsSync(clientDist)) {
+      app.use(express.static(clientDist))
+      app.get(/^\/(?!api).*/, (_req, res) => {
+        res.sendFile(path.join(clientDist, 'index.html'))
+      })
+    }
   }
 
   app.use(notFoundHandler)

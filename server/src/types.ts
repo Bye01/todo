@@ -13,21 +13,32 @@ export type TodoRow = {
   id: number
   user_id: number
   title: string
-  completed: 0 | 1
-  due_date: string | null
+  completed: boolean
+  due_date: string | Date | null
   priority: 'Low' | 'Medium' | 'High'
-  created_at: string
-  updated_at: string
+  created_at: string | Date
+  updated_at: string | Date
 }
 
 export function toTodo(row: TodoRow) {
   return {
     id: row.id,
     title: row.title,
-    completed: Boolean(row.completed),
-    dueDate: row.due_date,
+    completed: row.completed,
+    dueDate: toDateOnly(row.due_date),
     priority: row.priority,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: toDateTime(row.created_at),
+    updatedAt: toDateTime(row.updated_at),
   }
+}
+
+function toDateOnly(value: string | Date | null) {
+  if (!value) return null
+  if (typeof value === 'string') return value.slice(0, 10)
+  return value.toISOString().slice(0, 10)
+}
+
+function toDateTime(value: string | Date) {
+  if (typeof value === 'string') return value
+  return value.toISOString()
 }
